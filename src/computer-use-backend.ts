@@ -48,17 +48,18 @@ export class ComputerUseBackend {
 	}
 
 	async callTool(cwd: string, tool: string, args: Record<string, unknown>): Promise<ComputerUseToolResult> {
+		const normalized = normalizeToolArgs(args);
 		return this.queue.enqueue(async () => {
-			logDebug("computer-use.tool.start", { tool, argKeys: Object.keys(args) });
+			logDebug("computer-use.tool.start", { tool, argKeys: Object.keys(normalized) });
 			try {
-				return await this.callToolOnce(cwd, tool, args);
+				return await this.callToolOnce(cwd, tool, normalized);
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
 				if (!/thread not found|invalid thread id/i.test(message)) throw error;
 
 				logDebug("computer-use.tool.retry-thread", { tool });
 				this.threads.reset();
-				return this.callToolOnce(cwd, tool, args);
+				return this.callToolOnce(cwd, tool, normalized);
 			}
 		});
 	}
@@ -143,7 +144,34 @@ function buildNodeReplCode(pluginRoot: string, tool: string, args: Record<string
 		].join("\n");
 	}
 
-	return `${bootstrap}\n{\n  await sky.${tool}(${serializedArgs});\n  nodeRepl.write("ok");\n}`;
+	// The app-server intermittently loses its window handle (-10005
+	// noWindowsAvailable / cgWindowNotFound) even for an app whose state was
+	// just read; one get_app_state refresh re-resolves the window, so retry
+	// the action once after a refresh before surfacing the error.
+	const appOnlyArgs = JSON.stringify({ app: args.app });
+	return [
+		bootstrap,
+		"{",
+		"  try {",
+		`    await sky.${tool}(${serializedArgs});`,
+		"  } catch (error) {",
+		"    if (!/noWindowsAvailable|cgWindowNotFound/.test(String(error))) throw error;",
+		`    await sky.get_app_state(${appOnlyArgs});`,
+		`    await sky.${tool}(${serializedArgs});`,
+		"  }",
+		'  nodeRepl.write("ok");',
+		"}",
+	].join("\n");
+}
+
+function normalizeToolArgs(args: Record<string, unknown>): Record<string, unknown> {
+	const raw = args.element_index;
+	if (typeof raw !== "string") return args;
+	const trimmed = raw.trim();
+	// Codex validates element indexes as integers, but harness schemas send
+	// strings; coerce digit strings and leave other identifiers untouched.
+	if (!/^\d+$/.test(trimmed)) return args;
+	return { ...args, element_index: Number.parseInt(trimmed, 10) };
 }
 
 function toolTitle(tool: string): string {

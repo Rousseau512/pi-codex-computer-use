@@ -108,6 +108,52 @@ describe("ComputerUseBackend", () => {
 		await expect(backend.callTool("/tmp", "list_apps", {})).rejects.toThrow("still broken");
 		expect(threads.resetCount).toBe(1);
 	});
+
+	it("coerces digit-string element_index to an integer", async () => {
+		const client = new FakeClient();
+		client.responses.push({ content: [{ type: "text", text: "ok" }] });
+		const backend = new ComputerUseBackend(client, new FakeThreads());
+
+		await backend.callTool("/tmp", "click", { app: "Finder", element_index: "42" });
+
+		expect(client.calls[0]?.params).toMatchObject({
+			arguments: { app: "Finder", element_index: 42 },
+		});
+	});
+
+	it("leaves non-numeric element identifiers untouched", async () => {
+		const client = new FakeClient();
+		client.responses.push({ content: [{ type: "text", text: "ok" }] });
+		const backend = new ComputerUseBackend(client, new FakeThreads());
+
+		await backend.callTool("/tmp", "select_text", { app: "Notes", element_index: "field-a", text: "x" });
+
+		expect(client.calls[0]?.params).toMatchObject({
+			arguments: { element_index: "field-a" },
+		});
+	});
+
+	it("retries an action once after a state refresh when the window is lost", async () => {
+		const client = new FakeClient();
+		client.responses.push({ content: [{ type: "text", text: "ok" }] });
+		const backend = new ComputerUseBackend(client, new FakeThreads(), {
+			computerUsePluginRoot: "/plugins/computer-use/1.2.3",
+		});
+
+		await backend.callTool("/tmp", "click", { app: "Finder", element_index: "7" });
+
+		const params = client.calls[0]?.params;
+		let code = "";
+		if (params && typeof params === "object" && "arguments" in params) {
+			const toolArguments = params.arguments;
+			if (toolArguments && typeof toolArguments === "object" && "code" in toolArguments) {
+				code = String(toolArguments.code);
+			}
+		}
+		expect(code).toContain('await sky.click({"app":"Finder","element_index":7});');
+		expect(code).toContain("noWindowsAvailable|cgWindowNotFound");
+		expect(code).toContain('await sky.get_app_state({"app":"Finder"});');
+	});
 });
 
 function extractThreadId(params: unknown): unknown {
