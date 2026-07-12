@@ -148,8 +148,8 @@ function shouldDevAutoAccept(message: string): boolean {
 		.filter(Boolean);
 	if (allowedApps.length === 0) return false;
 
-	const match = message.match(/Allow Codex to use (.+?)\?/i);
-	const requestedApp = match?.[1]?.trim();
+	const match = message.match(/Allow (?:Codex(?: Computer Use)?|Computer Use) to use (.+?)\?/i);
+	const requestedApp = match?.[1]?.trim().replace(/^["'\u201c\u201d]+|["'\u201c\u201d]+$/g, "");
 	if (!requestedApp) return false;
 
 	return allowedApps.some((app) => app.toLocaleLowerCase() === requestedApp.toLocaleLowerCase());
