@@ -1,21 +1,19 @@
 # Architecture
 
-This extension bridges Pi tools to OpenAI Codex Computer Use without implementing any desktop automation itself. Codex app-server owns the plugin lifecycle, MCP server startup, and the native permission model; the extension is a thin, safety-conscious client.
+This extension bridges Pi tools to OpenAI Codex Computer Use without implementing desktop automation itself. Codex app-server owns the plugin lifecycle and provides a persistent Node REPL. The extension loads the installed ChatGPT Computer Use runtime into that REPL and maps Pi's typed tools to its `sky` API.
 
 ```text
 Pi extension (src/index.ts)
   -> Codex app-server (codex app-server --listen stdio://)
-    -> Codex computer-use MCP server
-      -> Codex Computer Use macOS app/service (SkyComputerUseClient)
-        -> local desktop
+    -> node_repl MCP server
+      -> installed Computer Use plugin wrapper
+        -> signed ChatGPT Computer Use runtime
+          -> local desktop
 ```
 
-## Why app-server instead of direct MCP
+## Why app-server and Node REPL
 
-Pi has no built-in MCP support, so the extension must be the client either way. Two options were explored:
-
-1. **Codex app-server (chosen):** the extension speaks app-server's JSONL protocol and calls `mcpServer/tool/call`. App-server owns plugin install/enable state, marketplace registration, MCP server startup/reload, and the permission/elicitation flow. This matches Codex's intended safety model.
-2. **Direct `SkyComputerUseClient mcp` (rejected for now):** simpler raw tool calls, but requires a full MCP client and bypasses Codex's plugin lifecycle and permission handling.
+The current ChatGPT Computer Use plugin exposes its supported integration through a plugin-owned Node REPL wrapper rather than a standalone `computer-use` MCP server. App-server supplies the persistent REPL, plugin discovery, thread lifecycle, and permission handling. The extension calls only the known `sky` methods and never implements accessibility or input synthesis itself.
 
 ## Module map
 
@@ -26,7 +24,7 @@ Pi has no built-in MCP support, so the extension must be the client either way. 
 | `src/app-server-client.ts` | JSONL request/response client over the spawned `codex app-server` process |
 | `src/protocol.ts` | Narrow TypeScript types for the app-server methods we use |
 | `src/thread-manager.ts` | One ephemeral Codex thread per runtime; reset on restart/`/new`/`/fork`/`/reload` |
-| `src/computer-use-backend.ts` | Thin adapter: ensure thread, call `mcpServer/tool/call`, normalize errors, retry stale threads |
+| `src/computer-use-backend.ts` | Maps typed tools to plugin-owned `sky` calls through `node_repl`, normalizes content, retries stale threads |
 | `src/computer-use-tools.ts` | Pi tool registration with TypeBox schemas, queue, content conversion |
 | `src/queue.ts` | Promise-chain queue serializing all Computer Use calls |
 | `src/content.ts` | MCP content -> Pi content blocks (text truncation, image preservation) |
@@ -45,22 +43,22 @@ Messages are newline-delimited JSON objects (`{id, method, params}`) — no `Con
    {"id":1,"method":"initialize","params":{"clientInfo":{"name":"...","version":"..."},"capabilities":{"experimentalApi":true}}}
    ```
 
-3. Check plugin state: `plugin/list` — expects `computer-use@openai-bundled` with `installed: true`, `enabled: true`.
-4. Start an ephemeral thread (required — `mcpServer/tool/call` rejects arbitrary thread IDs):
+3. Check plugin state with `plugin/list`, then read the installed plugin's local source path.
+4. Start an ephemeral thread:
 
    ```json
    {"id":3,"method":"thread/start","params":{"cwd":"...","ephemeral":true}}
    ```
 
-5. Call tools:
+5. Call `node_repl.js` through app-server. The generated code loads the plugin-owned `scripts/computer-use-client.mjs` once, invokes the requested `sky` method, and returns text or screenshot content:
 
    ```json
-   {"id":4,"method":"mcpServer/tool/call","params":{"server":"computer-use","tool":"list_apps","threadId":"<id>","arguments":{}}}
+   {"id":4,"method":"mcpServer/tool/call","params":{"server":"node_repl","tool":"js","threadId":"<id>","arguments":{"code":"..."}}}
    ```
 
-Other methods used: `marketplace/add`, `plugin/install`, `config/mcpServer/reload`, `mcpServerStatus/list`. Method names are centralized in `src/protocol.ts` to limit version-drift surface.
+Other methods used: `marketplace/add`, `plugin/install`, `config/mcpServer/reload`, and `mcpServerStatus/list`. Method names are centralized in `src/protocol.ts` to limit version-drift surface.
 
-The bundled plugin lives at `/Applications/Codex.app/Contents/Resources/plugins/openai-bundled/plugins/computer-use`; its `.mcp.json` launches `SkyComputerUseClient mcp`.
+The bundled plugin is discovered from app-server metadata rather than a hard-coded versioned cache path.
 
 ## Thread management
 

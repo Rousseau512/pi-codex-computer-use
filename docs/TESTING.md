@@ -18,8 +18,8 @@ Stable failure reasons referenced below (`codex_missing`, `plugin_not_installed`
 
 ## 2. Codex app bundle / marketplace
 
-- `/Applications/Codex.app` missing — expect a clear install/source hint.
-- Bundled marketplace path missing (`/Applications/Codex.app/Contents/Resources/plugins/openai-bundled`).
+- `/Applications/ChatGPT.app` missing — expect a clear install/source hint.
+- Bundled marketplace path missing (`/Applications/ChatGPT.app/Contents/Resources/plugins/openai-bundled`).
 - Marketplace exists but has no `computer-use` entry.
 - `plugin/list` returns only a remote marketplace entry.
 - Multiple marketplaces contain `computer-use` / ambiguous match.
@@ -37,11 +37,11 @@ Stable failure reasons referenced below (`codex_missing`, `plugin_not_installed`
 
 ## 4. MCP server availability
 
-- `mcpServerStatus/list` missing `computer-use` — expect `mcp_missing`.
-- Server exists but has zero tools, or tool names differ from expected.
-- Server startup stuck in `starting`, or startup error notification arrives.
-- `mcpServer/tool/call` returns `isError: true`.
-- `mcpServer/tool/call` times out.
+- `mcpServerStatus/list` missing `node_repl` — expect `mcp_missing`.
+- `node_repl` exists but does not expose `js`.
+- Node REPL startup stuck in `starting`, or startup error notification arrives.
+- `node_repl.js` returns `isError: true`.
+- `node_repl.js` times out.
 - Stale thread ID returns `thread not found` — expect one reset-and-retry; retry failure surfaces the error.
 
 ## 5. Codex thread management

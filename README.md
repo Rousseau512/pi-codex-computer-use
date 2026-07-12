@@ -2,10 +2,10 @@
 
 A [Pi](https://github.com/earendil-works/pi-coding-agent) extension that exposes OpenAI Codex Computer Use as Pi-native tools, so Pi agents can inspect and operate local macOS apps — reading accessibility trees and screenshots, then clicking, typing, scrolling, and pressing keys.
 
-The extension talks to Codex app-server, which owns the Computer Use plugin lifecycle, MCP startup, and native permission flow:
+The extension talks to Codex app-server, which owns the Computer Use plugin lifecycle and native permission flow:
 
 ```text
-Pi tool -> Codex app-server -> computer-use MCP server -> Codex Computer Use macOS app/service -> local desktop
+Pi tool -> Codex app-server -> Node REPL -> ChatGPT Computer Use runtime -> local desktop
 ```
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit together.
@@ -15,7 +15,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit together
 - macOS
 - [Pi](https://github.com/earendil-works/pi-coding-agent)
 - Codex CLI on `PATH` as `codex`
-- Codex.app installed, preferably at `/Applications/Codex.app`
+- ChatGPT.app installed at `/Applications/ChatGPT.app`
 - Codex Computer Use plugin installed, or installable from the bundled marketplace (`/computer-use install` handles this)
 - macOS Accessibility and Screen Recording permissions granted to Codex Computer Use when prompted
 - Preferably a vision-capable model, because `computer_use_get_app_state` returns screenshots
@@ -128,9 +128,9 @@ Run `/computer-use diagnose` first — it prints status plus actionable hints.
 | Symptom | Likely cause / fix |
 | --- | --- |
 | `codex_missing` | Codex CLI not on `PATH`; install Codex CLI |
-| `marketplace_missing` | Codex.app not at `/Applications/Codex.app`, or bundled marketplace path missing |
-| `plugin_not_installed` / `plugin_disabled` | Run `/computer-use install` |
-| `mcp_missing` | Plugin installed but MCP server not running; try `/computer-use reload` |
+| `marketplace_missing` | ChatGPT.app not at `/Applications/ChatGPT.app`, or bundled marketplace path missing |
+| `plugin_not_installed` / `plugin_disabled` | Install Computer Use from ChatGPT's plugin marketplace or run `/computer-use install` |
+| `mcp_missing` | Plugin installed but the Node REPL bridge is unavailable; try `/computer-use reload` |
 | Tool calls hang or error with permission messages | Grant Accessibility and Screen Recording to Codex Computer Use in macOS System Settings |
 | Permission prompts never appear in print mode | Expected: no-UI mode fails closed; run interactively or use the dev allowlist for safe apps |
 | `thread not found` errors | Handled automatically (thread reset + one retry); persistent failures suggest app-server instability — `/computer-use restart` |

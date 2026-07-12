@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+### Changed
+
+- Route Computer Use through ChatGPT's plugin-owned Node REPL runtime.
+- Discover the installed plugin path from Codex app-server metadata.
+- Detect `/Applications/ChatGPT.app` and the `node_repl` bridge in status checks.
+
 ## [0.1.0] - 2026-06-09
 
 Initial release.
