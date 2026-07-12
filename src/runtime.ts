@@ -3,7 +3,7 @@ import { AppServerClient, type ServerRequestResponder } from "./app-server-clien
 import { ComputerUseBackend, type ComputerUseToolResult } from "./computer-use-backend.ts";
 import { setComputerUseStatus } from "./footer-status.ts";
 import { logDebug } from "./log.ts";
-import type { AppServerRequest, InitializeResponse } from "./protocol.ts";
+import type { AppServerRequest, InitializeResponse, PluginListResponse } from "./protocol.ts";
 import { CodexThreadManager } from "./thread-manager.ts";
 
 export class ComputerUseRuntime {
@@ -41,10 +41,7 @@ export class ComputerUseRuntime {
 			this.threads.reset();
 		}
 
-		this.initializePromise ??= this.client.request<InitializeResponse>("initialize", {
-			clientInfo: { name: "pi-codex-computer-use", version: "0.1.0" },
-			capabilities: { experimentalApi: true },
-		});
+		this.initializePromise ??= this.initializeBackend();
 		return this.initializePromise;
 	}
 
@@ -116,6 +113,29 @@ export class ComputerUseRuntime {
 			void this.shutdown().finally(() => setComputerUseStatus(ctx, "idle"));
 		}, timeoutMs);
 	}
+	private async initializeBackend(): Promise<InitializeResponse> {
+		const initialized = await this.client.request<InitializeResponse>("initialize", {
+			clientInfo: { name: "pi-codex-computer-use", version: "0.1.0" },
+			capabilities: { experimentalApi: true },
+		});
+		const plugins = await this.client.request<PluginListResponse>("plugin/list", {});
+		const pluginRoot = findComputerUsePluginRoot(plugins);
+		if (!pluginRoot) {
+			throw new Error("Installed Computer Use plugin path was not reported by Codex app-server.");
+		}
+		this.backend.setComputerUsePluginRoot(pluginRoot);
+		return initialized;
+	}
+}
+
+function findComputerUsePluginRoot(plugins: PluginListResponse): string | undefined {
+	for (const marketplace of plugins.marketplaces) {
+		const plugin = marketplace.plugins.find((candidate) => candidate.name === "computer-use" && candidate.enabled);
+		const source = plugin?.source;
+		if (!source || typeof source !== "object" || !("path" in source)) continue;
+		if (typeof source.path === "string" && source.path.length > 0) return source.path;
+	}
+	return undefined;
 }
 
 function shouldDevAutoAccept(message: string): boolean {

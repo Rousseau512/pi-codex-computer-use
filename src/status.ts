@@ -6,10 +6,10 @@ import type { InitializeResponse, McpServerStatusListResponse, PluginListRespons
 
 const execFileAsync = promisify(execFile);
 
-export const DEFAULT_CODEX_APP_PATH = "/Applications/Codex.app";
+export const DEFAULT_CODEX_APP_PATH = "/Applications/ChatGPT.app";
 export const DEFAULT_BUNDLED_MARKETPLACE_ROOT = `${DEFAULT_CODEX_APP_PATH}/Contents/Resources/plugins/openai-bundled`;
 export const DEFAULT_PLUGIN_NAME = "computer-use";
-export const DEFAULT_MCP_SERVER_NAME = "computer-use";
+export const DEFAULT_MCP_SERVER_NAME = "node_repl";
 
 export type ComputerUseStatusReason =
 	| "ready"
@@ -123,11 +123,13 @@ export function evaluateComputerUseStatus(input: StatusEvaluationInput): Compute
 		};
 	}
 
-	const server = mcp.data.find((entry) => entry.name === DEFAULT_MCP_SERVER_NAME);
-	if (!server || Object.keys(server.tools).length === 0) {
+	const server = mcp.data.find(
+		(entry) => entry.name === DEFAULT_MCP_SERVER_NAME && typeof entry.tools.js === "object",
+	);
+	if (!server) {
 		return {
 			reason: "mcp_missing",
-			message: `${DEFAULT_MCP_SERVER_NAME} plugin is enabled, but its MCP server/tools are not available.`,
+			message: `${DEFAULT_PLUGIN_NAME} is enabled, but the Node REPL bridge is not available.`,
 			codexVersion,
 			appServer,
 			codexAppPath: codexAppExists ? DEFAULT_CODEX_APP_PATH : undefined,
@@ -138,7 +140,7 @@ export function evaluateComputerUseStatus(input: StatusEvaluationInput): Compute
 
 	return {
 		reason: "ready",
-		message: "Codex Computer Use is installed, enabled, and exposing MCP tools.",
+		message: "Codex Computer Use is installed, enabled, and available through the Node REPL bridge.",
 		codexVersion,
 		appServer,
 		codexAppPath: codexAppExists ? DEFAULT_CODEX_APP_PATH : undefined,
@@ -218,7 +220,7 @@ export function formatComputerUseStatus(status: ComputerUseStatus): string {
 		status.message,
 		"",
 		`Codex CLI: ${status.codexVersion ?? "unknown"}`,
-		`Codex.app: ${status.codexAppPath ?? "not found at default path"}`,
+		`ChatGPT.app: ${status.codexAppPath ?? "not found at default path"}`,
 	];
 
 	if (status.appServer) {

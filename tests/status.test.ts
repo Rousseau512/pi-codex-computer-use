@@ -32,11 +32,11 @@ function plugins(entries: Array<{ name: string; path?: string | null; plugin?: P
 	};
 }
 
-function mcp(toolNames: string[] = ["list_apps"]): McpServerStatusListResponse {
+function mcp(toolNames: string[] = ["js"]): McpServerStatusListResponse {
 	return {
 		data: [
 			{
-				name: "computer-use",
+				name: "node_repl",
 				authStatus: "unsupported",
 				resources: [],
 				resourceTemplates: [],
@@ -57,7 +57,7 @@ describe("evaluateComputerUseStatus", () => {
 		expect(status.reason).toBe("codex_app_missing");
 	});
 
-	it("reports marketplace_missing when Codex.app exists but plugin is absent", () => {
+	it("reports marketplace_missing when ChatGPT.app exists but plugin is absent", () => {
 		const status = evaluateComputerUseStatus({
 			codexAppExists: true,
 			appServer,
@@ -87,7 +87,7 @@ describe("evaluateComputerUseStatus", () => {
 		expect(status.reason).toBe("plugin_disabled");
 	});
 
-	it("reports mcp_missing when server has no tools", () => {
+	it("reports mcp_missing when the Node REPL bridge is absent", () => {
 		const status = evaluateComputerUseStatus({
 			codexAppExists: true,
 			appServer,
@@ -97,15 +97,15 @@ describe("evaluateComputerUseStatus", () => {
 		expect(status.reason).toBe("mcp_missing");
 	});
 
-	it("reports ready with sorted tool names", () => {
+	it("reports ready with the Node REPL bridge", () => {
 		const status = evaluateComputerUseStatus({
 			codexAppExists: true,
 			appServer,
 			plugins: plugins([{ name: "openai-bundled", plugin: plugin() }]),
-			mcp: mcp(["type_text", "list_apps"]),
+			mcp: mcp(),
 		});
 		expect(status.reason).toBe("ready");
-		expect(status.mcpServer?.toolNames).toEqual(["list_apps", "type_text"]);
+		expect(status.mcpServer?.toolNames).toEqual(["js"]);
 	});
 });
 
