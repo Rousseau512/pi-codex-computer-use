@@ -35,10 +35,8 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run typecheck && npm run test"
   },
-  "dependencies": {
-    "typebox": "^1.1.38"
-  },
   "peerDependencies": {
+    "typebox": "*",
     "@earendil-works/pi-ai": ">=0.79.0",
     "@earendil-works/pi-coding-agent": ">=0.79.0"
   },
@@ -47,6 +45,7 @@
     "@earendil-works/pi-coding-agent": "^0.79.0",
     "@types/node": "^24.12.4",
     "tsx": "^4.22.4",
+    "typebox": "^1.1.38",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"
   },
