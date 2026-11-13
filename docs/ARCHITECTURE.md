@@ -6,14 +6,14 @@ This extension bridges Pi tools to OpenAI Codex Computer Use without implementin
 Pi extension (src/index.ts)
   -> Codex app-server (codex app-server --listen stdio://)
     -> node_repl MCP server
-      -> installed Computer Use plugin wrapper
+      -> bundled @oai/sky module
         -> signed ChatGPT Computer Use runtime
           -> local desktop
 ```
 
 ## Why app-server and Node REPL
 
-The current ChatGPT Computer Use plugin exposes its supported integration through a plugin-owned Node REPL wrapper rather than a standalone `computer-use` MCP server. App-server supplies the persistent REPL, plugin discovery, thread lifecycle, and permission handling. The extension calls only the known `sky` methods and never implements accessibility or input synthesis itself.
+The current ChatGPT Computer Use plugin documents importing the bundled `@oai/sky` module in Node REPL rather than a standalone `computer-use` MCP server. This local checkout follows that bootstrap because this machine's plugin does not ship `scripts/computer-use-client.mjs`. App-server supplies the persistent REPL, plugin discovery, thread lifecycle, and permission handling. The extension calls only the known `sky` methods and never implements accessibility or input synthesis itself.
 
 ## Module map
 
@@ -50,7 +50,7 @@ Messages are newline-delimited JSON objects (`{id, method, params}`) — no `Con
    {"id":3,"method":"thread/start","params":{"cwd":"...","ephemeral":true}}
    ```
 
-5. Call `node_repl.js` through app-server. The generated code loads the plugin-owned `scripts/computer-use-client.mjs` once, invokes the requested `sky` method, and returns text or screenshot content:
+5. Call `node_repl.js` through app-server. The generated code imports `@oai/sky` once, invokes the requested `sky` method, and returns text or screenshot content:
 
    ```json
    {"id":4,"method":"mcpServer/tool/call","params":{"server":"node_repl","tool":"js","threadId":"<id>","arguments":{"code":"..."}}}

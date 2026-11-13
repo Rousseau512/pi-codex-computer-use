@@ -68,7 +68,7 @@ describe("ComputerUseBackend", () => {
 			expect.objectContaining({
 				arguments: expect.objectContaining({
 					code: expect.stringContaining(
-						'file:///plugins/computer-use/1.2.3/scripts/computer-use-client.mjs',
+						'import("@oai/sky")',
 					),
 				}),
 			}),

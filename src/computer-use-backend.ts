@@ -1,4 +1,3 @@
-import { pathToFileURL } from "node:url";
 import { convertCodexContentToPiContent, type PiContentBlock } from "./content.ts";
 import { logDebug } from "./log.ts";
 import { SerialQueue } from "./queue.ts";
@@ -73,7 +72,7 @@ export class ComputerUseBackend {
 					threadId,
 					tool: "js",
 					arguments: {
-						code: buildNodeReplCode(pluginRoot, tool, args),
+						code: buildNodeReplCode(tool, args),
 						timeout_ms: 120_000,
 						title: toolTitle(tool),
 					},
@@ -109,17 +108,11 @@ export class ComputerUseBackend {
 	}
 }
 
-function buildNodeReplCode(pluginRoot: string, tool: string, args: Record<string, unknown>): string {
+function buildNodeReplCode(tool: string, args: Record<string, unknown>): string {
 	if (!COMPUTER_USE_TOOLS[tool]) throw new Error(`Unsupported Computer Use tool: ${tool}`);
 
-	const clientUrl = pathToFileURL(`${pluginRoot}/scripts/computer-use-client.mjs`).href;
-	const bootstrap = [
-		"if (!globalThis.sky) {",
-		"  // Runtime-selected installed plugin path cannot use a static import.",
-		`  const { setupComputerUseRuntime } = await import(${JSON.stringify(clientUrl)});`,
-		"  await setupComputerUseRuntime({ globals: globalThis });",
-		"}",
-	].join("\n");
+	// Current macOS plugins document a bundled @oai/sky import, not a wrapper file.
+	const bootstrap = 'if (!globalThis.sky) globalThis.sky = (await import("@oai/sky")).sky;';
 	const serializedArgs = JSON.stringify(args);
 
 	if (tool === "list_apps") {
